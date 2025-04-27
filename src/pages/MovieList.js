@@ -2,20 +2,20 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 const MovieList = () => {
+  const navigate = useNavigate();
   const BACKEND = process.env.REACT_APP_BACKEND_URL;
   const [movies, setMovies] = useState([]);
-  const [editingMovieId, setEditingMovieId] = useState(null);
-  const [newCategory, setNewCategory] = useState("");
-  const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
-  const [editedMovie, setEditedMovie] = useState({
-    title: '',
-    youtubeLink: '',
-    uploadLink: '',
-    category: '',
-    status: 'Active',
-  });
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
+  const [selectedMovie, setSelectedMovie] = useState(null); // Selected movie for editing
+  const [isModalOpen, setIsModalOpen] = useState(false); // Manage modal visibility
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    uploadLink: "",
+    category: "",
+    status: "",
+    poster: null
+  });
 
   // Fetch all movies
   useEffect(() => {
@@ -26,7 +26,6 @@ const MovieList = () => {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
         const data = await response.json();
-        console.log(data);
         setMovies(data);
       } catch (error) {
         console.error("Error fetching movies:", error);
@@ -38,63 +37,62 @@ const MovieList = () => {
     fetchMovies();
   }, [BACKEND]);
 
-  const handleEdit = (id) => {
-    setEditingMovieId(id);
-    const movie = movies.find((m) => m._id === id);
-    if (movie) {
-      setEditedMovie({
-        title: movie.title,
-        youtubeLink: movie.youtubeLink,
-        uploadLink: movie.uploadLink,
-        category: movie.category,
-        status: movie.status,
-      });
-    }
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setEditedMovie((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSave = async (id) => {
-    try {
-      const response = await fetch(`${BACKEND}/api/movie/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editedMovie),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update movie");
-      }
-
-      const updatedMovies = movies.map((movie) =>
-        movie._id === id ? { ...movie, ...editedMovie } : movie
-      );
-      setMovies(updatedMovies);
-      setEditingMovieId(null);
-      setShowNewCategoryInput(false);
-      setNewCategory("");
-    } catch (error) {
-      console.error("Error updating movie:", error);
-    }
+  // Handle edit click - Open modal and pre-fill data
+  const handleEdit = (movie) => {
+    setSelectedMovie(movie);
+    setFormData({
+      title: movie.title,
+      description: movie.description,
+      uploadLink: movie.uploadLink,
+      category: movie.category,
+      status: movie.status,
+      poster: movie.poster
+    });
+    setIsModalOpen(true);
   };
 
   const handleAddMovie = () => {
-    navigate("/add-movies");
+    navigate("/add-movie");
+  }
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleAddCategory = () => {
-    if (newCategory.trim()) {
-      setEditedMovie((prev) => ({ ...prev, category: newCategory.trim() }));
-      setShowNewCategoryInput(false);
-      setNewCategory("");
+  // Handle save movie (update movie)
+  const handleSave = async () => {
+    try {
+      const updatedMovie = {
+        ...formData,
+        poster: formData.poster // Make sure poster is included in the formData
+      };
+      const response = await fetch(`${BACKEND}/api/movie/${selectedMovie._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatedMovie),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to update movie. Status: ${response.status}`);
+      }
+
+      const updatedMovieData = await response.json();
+      setMovies((prevMovies) =>
+        prevMovies.map((movie) =>
+          movie._id === selectedMovie._id ? updatedMovieData : movie
+        )
+      );
+      setIsModalOpen(false); // Close modal after saving
+    } catch (error) {
+      console.error("Error saving movie:", error);
     }
   };
 
-  const toggleNewCategoryInput = () => {
-    setShowNewCategoryInput((prev) => !prev);
+  // Handle modal close
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
   };
 
   if (loading) {
@@ -127,11 +125,11 @@ const MovieList = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Poster</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">YouTube</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Upload</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Movie Name</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Movie Image</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="relative px-6 py-3"><span className="sr-only">Edit</span></th>
                 </tr>
@@ -139,126 +137,101 @@ const MovieList = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {movies.map((movie) => (
                   <tr key={movie._id}>
+                    <td className="px-6 py-4 whitespace-nowrap">{movie.title}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{movie.category}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <img src={movie.poster} alt={movie.title} className="h-16 w-12 rounded object-cover" />
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {editingMovieId === movie._id ? (
-                        <input
-                          name="title"
-                          value={editedMovie.title}
-                          onChange={handleInputChange}
-                          className="border px-2 py-1 rounded w-full"
-                        />
-                      ) : (
-                        movie.title
-                      )}
+                    <td className="px-6 py-4 whitespace-nowrap">{movie.description}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-blue-600">
+                      <a href={movie.uploadLink} target="_blank" rel="noopener noreferrer" className="hover:underline">Source Link</a>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600">
-                      {editingMovieId === movie._id ? (
-                        <input
-                          name="youtubeLink"
-                          value={editedMovie.youtubeLink}
-                          onChange={handleInputChange}
-                          className="border px-2 py-1 rounded w-full"
-                        />
-                      ) : (
-                        <a href={movie.youtubeLink} target="_blank" rel="noopener noreferrer" className="hover:underline">Watch</a>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">
-                      {editingMovieId === movie._id ? (
-                        <input
-                          name="uploadLink"
-                          value={editedMovie.uploadLink}
-                          onChange={handleInputChange}
-                          className="border px-2 py-1 rounded w-full"
-                        />
-                      ) : (
-                        <a href={movie.uploadLink} target="_blank" rel="noopener noreferrer" className="hover:underline">Upload Link</a>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {editingMovieId === movie._id ? (
-                        <>
-                          <select
-                            name="category"
-                            value={editedMovie.category}
-                            onChange={handleInputChange}
-                            className="border px-2 py-1 rounded w-full"
-                          >
-                            <option value="Action">Action</option>
-                            <option value="Sci-Fi">Sci-Fi</option>
-                            <option value="Fantasy">Fantasy</option>
-                            <option value="Romance">Romance</option>
-                            <option value="Mystery">Mystery</option>
-                            <option value="Other">Other</option>
-                          </select>
-                          {showNewCategoryInput && (
-                            <div className="mt-2">
-                              <input
-                                type="text"
-                                value={newCategory}
-                                onChange={(e) => setNewCategory(e.target.value)}
-                                placeholder="New Category"
-                                className="border px-2 py-1 rounded w-full"
-                              />
-                              <button
-                                onClick={handleAddCategory}
-                                className="text-green-600 mt-1"
-                              >
-                                Add
-                              </button>
-                            </div>
-                          )}
-                          <button
-                            onClick={toggleNewCategoryInput}
-                            className="text-blue-600 mt-1"
-                          >
-                            {showNewCategoryInput ? "Cancel" : "New Category"}
-                          </button>
-                        </>
-                      ) : (
-                        movie.category
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {editingMovieId === movie._id ? (
-                        <select
-                          name="status"
-                          value={editedMovie.status}
-                          onChange={handleInputChange}
-                          className="border px-2 py-1 rounded w-full"
-                        >
-                          <option value="Active">Active</option>
-                          <option value="Pending">Pending</option>
-                          <option value="Inactive">Inactive</option>
-                        </select>
-                      ) : (
-                        movie.status
-                      )}
-                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">{movie.status}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      {editingMovieId === movie._id ? (
-                        <button
-                          onClick={() => handleSave(movie._id)}
-                          className="text-green-600 hover:text-green-800"
-                        >
-                          Save
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleEdit(movie._id)}
-                          className="text-blue-600 hover:text-blue-800"
-                        >
-                          Edit
-                        </button>
-                      )}
+                      <button
+                        onClick={() => handleEdit(movie)}
+                        className="text-blue-600 hover:text-blue-800"
+                      >
+                        Edit
+                      </button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Modal for Editing Movie */}
+        {isModalOpen && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
+            <div className="bg-white p-8 rounded-lg shadow-lg max-w-lg w-full">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Edit Movie</h3>
+                <button onClick={handleCloseModal} className="text-gray-500 hover:text-gray-700">&times;</button>
+              </div>
+              <form>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700" htmlFor="title">Movie Title</label>
+                  <input
+                    type="text"
+                    id="title"
+                    name="title"
+                    value={formData.title}
+                    onChange={handleChange}
+                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                  />
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700" htmlFor="description">Description</label>
+                  <textarea
+                    id="description"
+                    name="description"
+                    value={formData.description}
+                    onChange={handleChange}
+                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                  />
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700" htmlFor="uploadLink">Source Link</label>
+                  <input
+                    type="url"
+                    id="uploadLink"
+                    name="uploadLink"
+                    value={formData.uploadLink}
+                    onChange={handleChange}
+                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                  />
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700" htmlFor="status">Status</label>
+                  <input
+                    type="text"
+                    id="status"
+                    name="status"
+                    value={formData.status}
+                    onChange={handleChange}
+                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                  />
+                </div>
+                <div className="flex justify-end space-x-4">
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-md shadow-md"
+                  >
+                    Save Changes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCloseModal}
+                    className="bg-gray-500 text-white px-4 py-2 rounded-md"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
       </div>

@@ -1,3 +1,31 @@
-# Node.js dependencies
+# Node modules (these are installed from package.json)
 node_modules/
-env
+
+# Environment variables (sensitive credentials)
+.env
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+
+# Build output (if you compile or use TypeScript or Webpack later)
+dist/
+build/
+
+# Others (optional but good)
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+coverage/  # (if you run tests with coverage)

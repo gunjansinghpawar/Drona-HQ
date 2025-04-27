@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 // Movie schema definition
 const movieSchema = new mongoose.Schema({
   title: { type: String, required: true },
+  description: { type: String, required: true },
   poster: { type: String },
   youtubeLink: { type: String, required: true },
   uploadLink: { type: String, required: true },

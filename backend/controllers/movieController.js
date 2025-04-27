@@ -25,15 +25,16 @@ const uploadPosterToCloudinary = (req, res, next) => {
 
 const createMovie = async (req, res) => {
   try {
-    const { title, youtubeLink, uploadLink, category } = req.body;
+    const { title, youtubeLink, uploadLink, category,description } = req.body;
 
-    if (!title || !youtubeLink || !uploadLink || !category) {
+    if (!title || !youtubeLink || !uploadLink || !category || !description) {
       return res.status(400).json({ message: 'Title, YouTube Link, Upload Link, and Category are required.' });
     }
 
     const newMovie = new Movie({
       title,
       youtubeLink,
+      description,
       uploadLink,
       poster: req.body.poster,
       category,
@@ -76,7 +77,7 @@ const getMovieById = async (req, res) => {
 // Update a movie by ID
 const updateMovie = async (req, res) => {
   try {
-    const { title, youtubeLink, uploadLink, status, category } = req.body;
+    const { title, youtubeLink, uploadLink, status, category,description } = req.body;
 
     // If a new poster is uploaded, update it
     if (req.file) {
@@ -99,6 +100,7 @@ const updateMovie = async (req, res) => {
       {
         title,
         youtubeLink,
+        description,
         uploadLink,
         poster: req.body.poster,  // Cloudinary poster URL
         status: status || "active",  // Default to "active" if no status is provided
