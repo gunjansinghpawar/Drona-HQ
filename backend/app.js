@@ -13,16 +13,8 @@ const PORT = process.env.PORT;
 
 // Load environment variables from .env file
 dotenv.config();
-
-// CORS Configuration
-const corsOptions = {
-  origin: process.env.FRONTEND_URL, // Allow requests only from http://localhost:3000
-  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Define allowed methods
-  allowedHeaders: ['Content-Type', 'Authorization'], // Define allowed headers
-};
-
 // Middleware
-app.use(cors(corsOptions)); // Apply CORS with the specified options
+app.use(cors()); // Apply CORS with the specified options
 app.use(bodyParser.json()); // Parse JSON request bodies
 app.use('/api/user', userRoutes);
 app.use('/api/category', categoryRoutes);
