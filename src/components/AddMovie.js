@@ -199,7 +199,7 @@ export default function AddMovie() {
             >
               <option value="">-- Select a Category --</option>
               {categories.map((cat) => (
-                <option key={cat._id} value={cat._id}>
+                <option key={cat._id} value={cat.title}>
                   {cat.title}
                 </option>
               ))}
