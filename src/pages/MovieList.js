@@ -2,53 +2,54 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 const MovieList = () => {
-  const BACKEND = process.env.REACT_APP_BACKEND_URL; // Backend URL from environment variables
+  const BACKEND = process.env.REACT_APP_BACKEND_URL;
   const [movies, setMovies] = useState([]);
   const [editingMovieId, setEditingMovieId] = useState(null);
-  const [newCategory, setNewCategory] = useState(""); // State for adding new category
-  const [showNewCategoryInput, setShowNewCategoryInput] = useState(false); // Toggle for category input
+  const [newCategory, setNewCategory] = useState("");
+  const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
   const [editedMovie, setEditedMovie] = useState({
     title: '',
     youtubeLink: '',
     uploadLink: '',
     category: '',
-    status: 'Active', // Add a default status
+    status: 'Active',
   });
-
-  const [loading, setLoading] = useState(true); // Loading state for fetching movies
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Fetch movies from API
+  // Fetch all movies
   useEffect(() => {
     const fetchMovies = async () => {
       try {
-        const response = await fetch(`${BACKEND}/api/movie/`); // API endpoint for fetching movies
+        const response = await fetch(`${BACKEND}/api/movie/`);
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
         const data = await response.json();
-        console.log(data)
+        console.log(data);
         setMovies(data);
-        setLoading(false); // Set loading to false after fetching
       } catch (error) {
         console.error("Error fetching movies:", error);
-        setLoading(false); // Set loading to false in case of error
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchMovies();
-  }, []); // Run once on component mount
+  }, [BACKEND]);
 
   const handleEdit = (id) => {
-    setEditingMovieId(id); // Set the movie to edit
-    const movie = movies.find((m) => m.id === id);
-    setEditedMovie({
-      title: movie.title,
-      youtubeLink: movie.youtubeLink,
-      uploadLink: movie.uploadLink,
-      category: movie.category,
-      status: movie.status, // Initialize the status from the movie data
-    });
+    setEditingMovieId(id);
+    const movie = movies.find((m) => m._id === id);
+    if (movie) {
+      setEditedMovie({
+        title: movie.title,
+        youtubeLink: movie.youtubeLink,
+        uploadLink: movie.uploadLink,
+        category: movie.category,
+        status: movie.status,
+      });
+    }
   };
 
   const handleInputChange = (e) => {
@@ -56,14 +57,28 @@ const MovieList = () => {
     setEditedMovie((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = (id) => {
-    const updatedMovies = movies.map((movie) =>
-      movie.id === id
-        ? { ...movie, ...editedMovie } // Save changes to the movie
-        : movie
-    );
-    setMovies(updatedMovies);
-    setEditingMovieId(null); // Exit edit mode
+  const handleSave = async (id) => {
+    try {
+      const response = await fetch(`${BACKEND}/api/movie/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editedMovie),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update movie");
+      }
+
+      const updatedMovies = movies.map((movie) =>
+        movie._id === id ? { ...movie, ...editedMovie } : movie
+      );
+      setMovies(updatedMovies);
+      setEditingMovieId(null);
+      setShowNewCategoryInput(false);
+      setNewCategory("");
+    } catch (error) {
+      console.error("Error updating movie:", error);
+    }
   };
 
   const handleAddMovie = () => {
@@ -72,20 +87,14 @@ const MovieList = () => {
 
   const handleAddCategory = () => {
     if (newCategory.trim()) {
-      // Add new category to the selected movie
-      const updatedMovies = movies.map((movie) =>
-        movie.id === editingMovieId
-          ? { ...movie, category: newCategory }
-          : movie
-      );
-      setMovies(updatedMovies);
-      setNewCategory(""); // Reset input
-      setShowNewCategoryInput(false); // Hide input
+      setEditedMovie((prev) => ({ ...prev, category: newCategory.trim() }));
+      setShowNewCategoryInput(false);
+      setNewCategory("");
     }
   };
 
   const toggleNewCategoryInput = () => {
-    setShowNewCategoryInput((prev) => !prev); // Toggle the visibility of new category input
+    setShowNewCategoryInput((prev) => !prev);
   };
 
   if (loading) {
@@ -96,27 +105,25 @@ const MovieList = () => {
     );
   }
 
-
   return (
     <section className="flex-1 overflow-y-auto p-6 bg-gray-50">
       <div className="max-w-6xl mx-auto bg-white rounded-lg shadow p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-semibold text-gray-900">Movies</h2>
           <button
-            className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            type="button"
             onClick={handleAddMovie}
+            className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none"
           >
             <i className="fas fa-plus mr-2"></i> Add Movie
           </button>
         </div>
 
-        {movies.length === 0 ?
-          (
-            <div className="flex justify-center items-center p-6">
-              <span className="text-lg font-semibold text-gray-500">No movies available.</span>
-            </div>
-          ) : (<div className="overflow-x-auto">
+        {movies.length === 0 ? (
+          <div className="flex justify-center items-center p-6">
+            <span className="text-lg font-semibold text-gray-500">No movies available.</span>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -131,61 +138,54 @@ const MovieList = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {movies.map((movie) => (
-                  <tr key={movie.id}>
+                  <tr key={movie._id}>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <img alt={`Movie poster for ${movie.title}`} className="h-16 w-12 rounded object-cover" src={movie.poster} width="80" height="120" />
+                      <img src={movie.poster} alt={movie.title} className="h-16 w-12 rounded object-cover" />
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {editingMovieId === movie.id ? (
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {editingMovieId === movie._id ? (
                         <input
                           name="title"
-                          type="text"
                           value={editedMovie.title}
                           onChange={handleInputChange}
-                          className="border px-2 py-1 rounded"
+                          className="border px-2 py-1 rounded w-full"
                         />
                       ) : (
                         movie.title
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600">
-                      {editingMovieId === movie.id ? (
+                      {editingMovieId === movie._id ? (
                         <input
                           name="youtubeLink"
-                          type="text"
                           value={editedMovie.youtubeLink}
                           onChange={handleInputChange}
-                          className="border px-2 py-1 rounded"
+                          className="border px-2 py-1 rounded w-full"
                         />
                       ) : (
-                        <a href={movie.youtubeLink} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                          Watch
-                        </a>
+                        <a href={movie.youtubeLink} target="_blank" rel="noopener noreferrer" className="hover:underline">Watch</a>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">
-                      {editingMovieId === movie.id ? (
+                      {editingMovieId === movie._id ? (
                         <input
                           name="uploadLink"
-                          type="text"
                           value={editedMovie.uploadLink}
                           onChange={handleInputChange}
-                          className="border px-2 py-1 rounded"
+                          className="border px-2 py-1 rounded w-full"
                         />
                       ) : (
-                        <a href={movie.uploadLink} className="hover:underline">
-                          Upload Link
-                        </a>
+                        <a href={movie.uploadLink} target="_blank" rel="noopener noreferrer" className="hover:underline">Upload Link</a>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      {editingMovieId === movie.id ? (
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {editingMovieId === movie._id ? (
                         <>
                           <select
                             name="category"
                             value={editedMovie.category}
                             onChange={handleInputChange}
-                            className="border px-2 py-1 rounded"
+                            className="border px-2 py-1 rounded w-full"
                           >
                             <option value="Action">Action</option>
                             <option value="Sci-Fi">Sci-Fi</option>
@@ -195,40 +195,40 @@ const MovieList = () => {
                             <option value="Other">Other</option>
                           </select>
                           {showNewCategoryInput && (
-                            <div>
+                            <div className="mt-2">
                               <input
                                 type="text"
                                 value={newCategory}
                                 onChange={(e) => setNewCategory(e.target.value)}
-                                placeholder="Enter new category"
-                                className="border px-2 py-1 mt-2"
+                                placeholder="New Category"
+                                className="border px-2 py-1 rounded w-full"
                               />
                               <button
                                 onClick={handleAddCategory}
-                                className="text-green-600 mt-2"
+                                className="text-green-600 mt-1"
                               >
-                                Add Category
+                                Add
                               </button>
                             </div>
                           )}
                           <button
                             onClick={toggleNewCategoryInput}
-                            className="text-blue-600 mt-2"
+                            className="text-blue-600 mt-1"
                           >
-                            {showNewCategoryInput ? 'Cancel' : 'Add New Category'}
+                            {showNewCategoryInput ? "Cancel" : "New Category"}
                           </button>
                         </>
                       ) : (
                         movie.category
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      {editingMovieId === movie.id ? (
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {editingMovieId === movie._id ? (
                         <select
                           name="status"
                           value={editedMovie.status}
                           onChange={handleInputChange}
-                          className="border px-2 py-1 rounded"
+                          className="border px-2 py-1 rounded w-full"
                         >
                           <option value="Active">Active</option>
                           <option value="Pending">Pending</option>
@@ -239,17 +239,17 @@ const MovieList = () => {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      {editingMovieId === movie.id ? (
+                      {editingMovieId === movie._id ? (
                         <button
-                          onClick={() => handleSave(movie.id)}
-                          className="text-green-600 hover:text-green-900"
+                          onClick={() => handleSave(movie._id)}
+                          className="text-green-600 hover:text-green-800"
                         >
                           Save
                         </button>
                       ) : (
                         <button
-                          onClick={() => handleEdit(movie.id)}
-                          className="text-blue-600 hover:text-blue-900"
+                          onClick={() => handleEdit(movie._id)}
+                          className="text-blue-600 hover:text-blue-800"
                         >
                           Edit
                         </button>
@@ -259,9 +259,8 @@ const MovieList = () => {
                 ))}
               </tbody>
             </table>
-          </div>)
-        }
-
+          </div>
+        )}
       </div>
     </section>
   );
