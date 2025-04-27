@@ -1,5 +1,4 @@
 const express = require('express');
-const cors = require('cors');
 const bodyParser = require('body-parser');
 const dotenv = require('dotenv');
 const userRoutes = require('./routes/userRoutes');
@@ -8,36 +7,38 @@ const bannerRoutes = require('./routes/bannerRoutes');
 const movieRoutes = require('./routes/movieRoutes');
 const connectDB = require('./config/dbConfig');
 
-// Load environment variables at the very top
+// Load env
 dotenv.config();
 
 const app = express();
 
-// Correct PORT and MONGO_URI after dotenv
-const PORT = process.env.PORT || 5000;
-const MONGO_URI = process.env.MONGO_URL;
+// CORS setup
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*'); // Allow all origins
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  
+  next();
+});
 
-// Setup CORS properly to allow ALL ORIGINS
-const corsOptions = {
-  origin: '*',  // Allow ALL origins
-  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-  credentials: true, // If you are using credentials (cookies, authorization headers, etc.)
-  allowedHeaders: ['Content-Type', 'Authorization'],
-};
-
-app.use(cors(corsOptions)); // Apply CORS globally
+// Body parser
 app.use(bodyParser.json());
 
-// API routes
+// Routes
 app.use('/api/user', userRoutes);
 app.use('/api/category', categoryRoutes);
 app.use('/api/banner', bannerRoutes);
 app.use('/api/movie', movieRoutes);
 
-// Connect to MongoDB
-connectDB(MONGO_URI);
+// MongoDB connection
+connectDB(process.env.MONGO_URL);
 
-// Start the server
+// Server
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
