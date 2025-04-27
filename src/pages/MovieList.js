@@ -52,7 +52,7 @@ const MovieList = () => {
   };
 
   const handleAddMovie = () => {
-    navigate("/add-movie");
+    navigate("/add-movies");
   }
   const handleChange = (e) => {
     const { name, value } = e.target;
